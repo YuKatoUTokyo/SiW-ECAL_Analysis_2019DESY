@@ -123,7 +123,6 @@ void build_event_all(std::string str){
     Double_t pedestal_mean[16][15][64];
     Pedestal_Tree[islab]->SetBranchAddress("pedestal_mean", pedestal_mean);
 
-    // Fill to Tree Data
     for(Int_t ievent=0; ievent<1; ievent++){
       Pedestal_Tree[islab]->GetEntry(ievent);
       for(Int_t ichip=0; ichip<MaxChip; ichip++){

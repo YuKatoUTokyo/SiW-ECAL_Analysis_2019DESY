@@ -97,17 +97,20 @@ void event_display_goto(std::string str){
 
     if(nhit_channel>5){
 
+      // =============================================================================================== //
       // Cut condition loop
       Int_t nslabs[5] = {0};
       Int_t nchips[16] = {0};
-      bool bslab = true, bchip = false;
+      Int_t nchannels[64] = {0};
+      Int_t nadc_charge = 0;
+      bool bslab = true, bchip = false, bchannel = false;
       for(Int_t ihit=0; ihit<nhit_channel; ihit++){
-        //if(slab_number[ihit]==0) nslab0++;
-        //if(chip_number[ihit]==0) nchip0++;
 	//if(slab_number[ihit]>MaxSlab) continue;
 	//if(chip_number[ihit]>MaxChip) continue;
 	nslabs[slab_number[ihit]]++;
 	nchips[chip_number[ihit]]++;
+	nchannels[channel_number[ihit]]++;
+	if(charge_lowGain_adc[ihit]<200&&charge_lowGain_adc[ihit]>100) nadc_charge++;
       }
       for(Int_t islab=0; islab<MaxSlab; islab++){
         if(nslabs[islab]==0) bslab = false;
@@ -115,6 +118,14 @@ void event_display_goto(std::string str){
       for(Int_t ichip=0; ichip<MaxChip; ichip++){
         if(nchips[ichip]>4){
 	  bchip = true;
+	  //cout << "break chip cut loop!" << endl;
+	  break;
+	}
+      }
+      for(Int_t ichn=0; ichn<MaxChannel; ichn++){
+        if(nchannels[ichn]>4){
+	  bchannel = true;
+	  //cout << "break channel cut loop!" << endl;
 	  break;
 	}
       }
@@ -122,7 +133,12 @@ void event_display_goto(std::string str){
       if(bslab==false) continue;
       // Cut chip condition
       if(bchip==false) continue;
+      // Cut channel condition
+      if(bchannel==false) continue;
+      // Cut charge condition
+      if(nadc_charge<5) continue;
 
+      // =============================================================================================== //
       for(Int_t ihit=0; ihit<nhit_channel; ihit++){
 	mip_evdisp[cuthits]->Fill(hit_x[ihit], hit_z[ihit], hit_y[ihit], charge_lowGain_adc[ihit]);
       }
@@ -130,7 +146,7 @@ void event_display_goto(std::string str){
     }
 
   }
-  // -----------------------------------------------------------------------------------------------------   
+  // ================================================================================================================================================ //
   // Write Event Display
   TFile *fout = new TFile(filename+"_EvDisplay.root" , "RECREATE");
   fout->cd();

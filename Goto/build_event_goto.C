@@ -67,7 +67,7 @@ void build_event_goto(std::string str){
   fev10->SetBranchAddress("gain_hit_high", gain_hit_high);
 
   // Read Chip Map
-  TString mapchip_path = "/home/goto/ILC/SiWECAL_2019/Analysis/Pedestal_Stability/Macro/map_chip.dat";
+  TString mapchip_path = "./map_chip_fev13.dat";
   std::ifstream reading_file(mapchip_path, std::ios::in);
   if(!reading_file){
     cout << "map_chip.dat is not found" << endl;
@@ -97,7 +97,7 @@ void build_event_goto(std::string str){
     if(islab==3) slabname = "K1";
     if(islab==4) slabname = "K2";
 
-    TString pedestal_filename = "/Users/kiichigoto/Desktop/laboratory/ILC/Test_Beam_2019/Analysis/Pedestal_Map/" + slabname + "_Pedestal.root";
+    TString pedestal_filename = "./Pedestal_Map/" + slabname + "_Pedestal.root";
 //  TFile *file_1 = TFile::Open(slab.data() + "_Pedestal.root"); 
     f[islab] = TFile::Open(pedestal_filename); 
     Pedestal_Tree[islab] = (TTree*)f[islab]->Get("Pedestal_Tree");

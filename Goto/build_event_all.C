@@ -88,8 +88,6 @@ void build_event_all(std::string str){
   Float_t tmp_x0 = 0, tmp_y0 = 0, tmp_x = 0, tmp_y = 0;
   while(reading_file_fev13){
     reading_file_fev13 >> tmp_chip >> tmp_x0 >> tmp_y0 >> tmp_channel >> tmp_x >> tmp_y;
-    //map_pointX[0][tmp_chip][tmp_channel] = -tmp_x;
-    //map_pointY[0][tmp_chip][tmp_channel] = tmp_y;
     map_fev13_pointX[tmp_chip][tmp_channel] = -tmp_x;
     map_fev13_pointY[tmp_chip][tmp_channel] = tmp_y;
   }
@@ -100,22 +98,23 @@ void build_event_all(std::string str){
   }
 
   // Pedestal Tree open 
-  //TFile *f[MaxSlab];
-  //TTree *Pedestal_Tree[MaxSlab];
-  //Double_t pedestal_mean_copy[MaxSlab][MaxChip][MaxMemroy][MaxChannel];
-  TFile *f[5];
-  TTree *Pedestal_Tree[5];
-  Double_t pedestal_mean_copy[5][MaxChip][MaxMemory][MaxChannel];
+  TFile *f[MaxSlab];
+  TTree *Pedestal_Tree[MaxSlab];
+  Double_t pedestal_mean_copy[MaxSlab][MaxChip][MaxMemory][MaxChannel];
 
-  for(Int_t islab=0; islab<5; islab++){
+  for(Int_t islab=0; islab<MaxSlab; islab++){
     TString slabname = "";
     if(islab==0) slabname = "P1";
     if(islab==1) slabname = "P2";
     if(islab==2) slabname = "P3";
     if(islab==3) slabname = "K1";
     if(islab==4) slabname = "K2";
+    if(islab==5) slabname = "SLB_2";
+    if(islab==6) slabname = "SLB_1";
+    if(islab==7) slabname = "SLB_3";
+    if(islab==8) slabname = "SLB_0";
 
-    TString pedestal_filename = "./Pedestal_Map/" + slabname + "_Pedestal.root";
+    TString pedestal_filename = "/Users/kiichigoto/Desktop/laboratory/ILC/Test_Beam_2019/Analysis/Pedestal_Map/" + slabname + "_Pedestal.root";
     f[islab] = TFile::Open(pedestal_filename); 
     Pedestal_Tree[islab] = (TTree*)f[islab]->Get("Pedestal_Tree");
 
@@ -123,6 +122,7 @@ void build_event_all(std::string str){
     Double_t pedestal_mean[16][15][64];
     Pedestal_Tree[islab]->SetBranchAddress("pedestal_mean", pedestal_mean);
 
+    // Fill to Tree Data
     for(Int_t ievent=0; ievent<1; ievent++){
       Pedestal_Tree[islab]->GetEntry(ievent);
       for(Int_t ichip=0; ichip<MaxChip; ichip++){
@@ -135,6 +135,8 @@ void build_event_all(std::string str){
       }
     }
   }
+  cout << "Pedestal Map was read" << endl;
+
   //// Define //---------------------------------------------------------------//
   Int_t NMAX = 16*64*15*5;
   Int_t nhit_channel;
@@ -152,6 +154,9 @@ void build_event_all(std::string str){
 
   // Create New TTree
   TFile *fout = new TFile(filename + "_BUILD_EVENT.root" , "RECREATE");
+  if(!fout){
+    cout << "out file could not be created" << endl;
+  }
   TTree *Event_Tree = new TTree("Event_Tree", "Event_Tree");
   Event_Tree->Branch("acqNumber", &acqNumber,
 		        "acqNumber/I");
@@ -180,8 +185,9 @@ void build_event_all(std::string str){
   Event_Tree->Branch("charge_lowGain_adc", charge_lowGain_adc,
 		        "charge_lowGain_adc[nhit_channel]/I");
 
-  //// Main Data Analysis Loop //----------------------------------------------//
+  cout << "Tree was created" << endl;
 
+  //// Main Data Analysis Loop //----------------------------------------------//
   fout->cd();
 
   Int_t nhit_all[MaxEvent];
@@ -206,8 +212,6 @@ void build_event_all(std::string str){
 	      bcid_all.at(ibcid).push_back(ichn);
 	      bcid_all.at(ibcid).push_back(imemory);
 	      if(islab<5){
-		//bcid_all.at(ibcid).push_back(map_pointX[0][ichip][ichn]);
-	        //bcid_all.at(ibcid).push_back(map_pointY[0][ichip][ichn]);
 		bcid_all.at(ibcid).push_back(map_fev13_pointX[ichip][ichn]);
 	        bcid_all.at(ibcid).push_back(map_fev13_pointY[ichip][ichn]);
 	      }
@@ -217,8 +221,7 @@ void build_event_all(std::string str){
 	      }
 	      bcid_all.at(ibcid).push_back(map_pointZ[islab]);
 	      bcid_all.at(ibcid).push_back(charge_hiGain[islab][ichip][imemory][ichn]);
-	      if(islab<5) bcid_all.at(ibcid).push_back(charge_lowGain[islab][ichip][imemory][ichn] - pedestal_mean_copy[islab][ichip][imemory][ichn]);
-	      else bcid_all.at(ibcid).push_back(charge_lowGain[islab][ichip][imemory][ichn]);
+	      bcid_all.at(ibcid).push_back(charge_lowGain[islab][ichip][imemory][ichn] - pedestal_mean_copy[islab][ichip][imemory][ichn]);
 	      nhit_all[ievent]++;
 	      }
 	    }

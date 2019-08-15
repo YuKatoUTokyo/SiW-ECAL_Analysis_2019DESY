@@ -114,7 +114,7 @@ void build_event_all(std::string str){
     if(islab==7) slabname = "SLB_3";
     if(islab==8) slabname = "SLB_0";
 
-    TString pedestal_filename = "./pedestal/" + slabname + "_Pedestal.root";
+    TString pedestal_filename = "/Users/kiichigoto/Desktop/laboratory/ILC/Test_Beam_2019/Analysis/Pedestal_Map/" + slabname + "_Pedestal.root";
     f[islab] = TFile::Open(pedestal_filename); 
     Pedestal_Tree[islab] = (TTree*)f[islab]->Get("Pedestal_Tree");
 

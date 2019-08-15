@@ -18,10 +18,10 @@ run_XXXXX_merge_BUILD_EVENT_EvDisplay.root : TH3F shower event display by event_
 run_20044 : Change angle sample data
 
 ### Result/
-run_XXXXX_merge_analysis.pdf : Analysis for cross talk by merge_analysis.C  
+run_XXXXX_merge_analysis.pdf : Analysis for cross talk and sensitive thickness by merge_analysis.C  
 
-### Pedestal_Map/
-Pedestal tree for Only FEV13 in Kyushu  
+### pedetal/
+Pedestal tree 
 
 ### map_chip/
 map chip information

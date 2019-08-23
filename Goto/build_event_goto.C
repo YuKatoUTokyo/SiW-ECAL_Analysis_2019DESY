@@ -97,7 +97,7 @@ void build_event_goto(std::string str){
     if(islab==3) slabname = "K1";
     if(islab==4) slabname = "K2";
 
-    TString pedestal_filename = "./Pedestal_Map/" + slabname + "_Pedestal.root";
+    TString pedestal_filename = "./pedestal/" + slabname + "_Pedestal.root";
 //  TFile *file_1 = TFile::Open(slab.data() + "_Pedestal.root"); 
     f[islab] = TFile::Open(pedestal_filename); 
     Pedestal_Tree[islab] = (TTree*)f[islab]->Get("Pedestal_Tree");
@@ -105,9 +105,6 @@ void build_event_goto(std::string str){
     // Reading Calibration data from Tree
     Double_t pedestal_mean[16][15][64];
     Pedestal_Tree[islab]->SetBranchAddress("pedestal_mean", pedestal_mean);
-
-
-    // Fill to Tree Data
 
     for(Int_t ievent=0; ievent<1; ievent++){
       Pedestal_Tree[islab]->GetEntry(ievent);
@@ -207,16 +204,17 @@ void build_event_goto(std::string str){
     }
 
     // merge bcid < 2
-    // Problem : bcid may be overlapping
     std::vector<std::vector<Int_t> > bcid_merge;
     bcid_merge.resize(4096);
     for(Int_t ibcid=1; ibcid<4095; ibcid++){
       if(!bcid_all[ibcid].empty()){
 	bcid_merge[ibcid] = bcid_all[ibcid];
-	if(!bcid_all[ibcid+1].empty()){
+	if(!bcid_all[ibcid+1].empty() && bcid_all[ibcid].size()>bcid_all[ibcid+1].size()){
 	  bcid_merge[ibcid].insert(bcid_merge[ibcid].end(), bcid_all[ibcid+1].begin(), bcid_all[ibcid+1].end());
-	  if(!bcid_all[ibcid-1].empty()){
+	  bcid_all[ibcid+1].clear();
+	  if(!bcid_all[ibcid-1].empty() && bcid_all[ibcid].size()>bcid_all[ibcid-1].size()){
 	    bcid_merge[ibcid].insert(bcid_merge[ibcid].begin(), bcid_all[ibcid-1].begin(), bcid_all[ibcid-1].end());
+	    bcid_all[ibcid-1].clear();
 	  }
 	}
       }

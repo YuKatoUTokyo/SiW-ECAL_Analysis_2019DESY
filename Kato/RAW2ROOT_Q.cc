@@ -37,7 +37,7 @@ public:
   RAW2ROOT(){
     recordEvent = false;
     _savelog = true;
-    _debug = false;
+    _debug = true;
     if(_debug==true) _savelog=true;
 
     chipIds.push_back(0x0000);//chip 2
@@ -440,9 +440,12 @@ void RAW2ROOT::plotHistos() {
 
 void RAW2ROOT::printEvent(std::vector < unsigned short int > & eventData) {
   if (_debug) {
+    unsigned int count = 0;
     out_log << "printing event for debug" << endl;
     for (unsigned int i=0; i<eventData.size(); i++) {
-      out_log << i << " 0x" << hex << eventData[i] << " "<< dec <<int(eventData[i] & 0x0fff) << endl;
+      if(eventData[i] == 0xfffd) count =0;
+      out_log << i << " " << count << " 0x" << hex << eventData[i] << " "<< dec <<int(eventData[i] & 0x0fff) << endl;
+      count++;
     }
   }
   return;
@@ -486,7 +489,7 @@ int RAW2ROOT::readEvent(std::vector < unsigned short int > & eventData, int bcid
 
     if( eventData[i] == 0xfffd){// find start chip tag
       chipStartIndex=i+CHIPHEAD;
-      if (_debug) out_log << "   start chip";
+      if (_debug) out_log << "   start chip" << endl;
     }
 
     if(last == 0xfffe){// find end chip tag
@@ -498,12 +501,12 @@ int RAW2ROOT::readEvent(std::vector < unsigned short int > & eventData, int bcid
 	    
 
       if(isValidChip){
-	const int offset=1; //was 2
+	const int offset=2; //ideally 1
 	rawDataSize = i-chipStartIndex-CHIPENDTAG;
 	local_offset = (rawDataSize-offset)%(1+NCHANNELS*2);
 	
 	if(local_offset!=0){
-	  if (_savelog) out_log<<"<!> WARNING <!> Additionnal data words detected"<<endl;
+	  if (_savelog) out_log<<"<!> WARNING <!> Additionnal data words detected: " << local_offset <<endl;
 	  //  last=eventData[i];
 	}
 
@@ -512,7 +515,7 @@ int RAW2ROOT::readEvent(std::vector < unsigned short int > & eventData, int bcid
 	if (_debug) out_log<<"Chip data: "  <<" size: "<<rawDataSize<<" col: "<<nColumns<<" evt: "<<(rawDataSize-offset)%(1+NCHANNELS*2)
 			<<"   local_offset :"<< local_offset  << endl;
 
-	if((rawDataSize-offset-local_offset)%(1+NCHANNELS*2)!=0){
+	if((rawDataSize-offset-local_offset)%(1+NCHANNELS*2)!=0 || local_offset>1){
 	  if(_savelog) out_log<<"<!> ERROR <!> Bad data size"<<endl;
 	  last=eventData[i];
 	  return 1;
@@ -527,7 +530,7 @@ int RAW2ROOT::readEvent(std::vector < unsigned short int > & eventData, int bcid
 	if(i<2) return 9;
 
 	//test of the chip id
-	int chipid = eventData[i-2];//was 3
+	int chipid = eventData[i-CHIPENDTAG-offset+1];//was 3
 	//irles
 	bool isGoodChipNumber=false;
 	for(unsigned int iChip = 0 ; iChip<chipIds.size();iChip++){
@@ -540,7 +543,7 @@ int RAW2ROOT::readEvent(std::vector < unsigned short int > & eventData, int bcid
 	}
 
 	//data integrity 
-	int data_integ=data_integrity(eventData,i,local_offset,nColumns,chipid);
+	int data_integ=data_integrity(eventData,i,offset+local_offset,nColumns,chipid);
 	if(data_integ>0) return data_integ;
 
 	// ----------------------
@@ -556,7 +559,7 @@ int RAW2ROOT::readEvent(std::vector < unsigned short int > & eventData, int bcid
 	for (int ibc=0; ibc<nColumns; ibc++) {
 
 	  //fill BCID
-	  bcid[chipid][ibc]=eventData[i-3-1*local_offset-ibc] & 0x0fff ;  // !!!   index to be verified   !!!
+	  bcid[chipid][ibc]=eventData[i-CHIPENDTAG-offset-local_offset-ibc] & 0x0fff ;  // !!!   index to be verified   !!!
 
 	  if(bcid[chipid][ibc] > 0 && bcid[chipid][ibc]-previousBCID < 0) loopBCID++;
 	  if(bcid[chipid][ibc] > 0 ) corrected_bcid[chipid][ibc] = bcid[chipid][ibc]+loopBCID*4096;
@@ -566,7 +569,7 @@ int RAW2ROOT::readEvent(std::vector < unsigned short int > & eventData, int bcid
 	  // fill the charges
 	  int ichan(0);
 	  // range for this column
-	  int begin =  i-3 - 1*local_offset - nColumns -  ibc*NCHANNELS*2; // !!!   index to be verified   !!!
+	  int begin =  i-CHIPENDTAG - offset-local_offset - nColumns -  ibc*NCHANNELS*2; // !!!   index to be verified   !!!
 	  int end = begin - NCHANNELS;
 	  for (int jj = begin; jj>end; jj--) {
 
@@ -764,8 +767,8 @@ int RAW2ROOT::data_integrity(std::vector < unsigned short int > & eventData, int
     
 
   for (int ibc=0; ibc<nColumns; ibc++) {
-    int bcid = int(eventData[i-3-1*local_offset-ibc] & 0x0fff);
-    if( int(eventData[i-3-1*local_offset-ibc] & 0xf000) !=0 ) {
+    int bcid = int(eventData[i-CHIPENDTAG-local_offset-ibc] & 0x0fff);
+    if( int(eventData[i-CHIPENDTAG-local_offset-ibc] & 0xf000) !=0 ) {
       check_data=4; //extra bits
       if (_savelog) out_log << "<!> DataIntegrity ERROR <!> Extra bits in BCID " << ibc <<  endl;
       h_dataIntegrity_bcid->Fill(bcid); 
@@ -776,7 +779,7 @@ int RAW2ROOT::data_integrity(std::vector < unsigned short int > & eventData, int
     // fill the charges
     int ichan(0);
     // range for this column
-    int begin =  i-3 - 1*local_offset - nColumns -  ibc*NCHANNELS*2; // !!!   index to be verified   !!!
+    int begin =  i-CHIPENDTAG - local_offset - nColumns -  ibc*NCHANNELS*2; // !!!   index to be verified   !!!
     int end = begin - NCHANNELS;
 
     for (int jj = begin; jj>end; jj--) {     
@@ -896,7 +899,9 @@ void RAW2ROOT::ReadFile(TString inputFileName, bool overwrite, TString outFileNa
     //int nColumns = 0;
     bool altTag = false;
     int countchipdata=0;
+    int countbugdata=0;
     int countchip=0;
+    int bugID[16] = {493,495,493,495,493,495,493,495,495,495,495,495,495,496,495,496};
 
     fin.open(inputFileName.Data(), ios_base::in|ios_base::binary);
     //int nline=0;
@@ -906,84 +911,129 @@ void RAW2ROOT::ReadFile(TString inputFileName, bool overwrite, TString outFileNa
 
     if(fin.is_open())
       while (fin.read((char *)&dataResult, sizeof(dataResult) ) && event<maxevt ) {
+	
+	countchipdata++;
+	if(lastTwo[1] == 0xFFFC){
+	  if (_debug) out_log << "   SPILL "<< lastTwo[0] << " " << dataResult << " START--->" <<endl;
+	  countchip=0;
+	}
+	if(lastTwo[1] == 0xFFFD){
+	  if (_debug) out_log << "       Block "<< lastTwo[0] - 65280 << " Begin...";
+	}
+	if(lastTwo[1] == 0x4843 && lastTwo[0] == 0x5049 && dataResult == 0x2020){// SKIROC-Data Start
+	  countchipdata=0;
+	  countbugdata=0;
+	}
+	
+	if (dataResult == 0xFFFE){
+	  packetData.pop_back();
+	  countbugdata++;
+	  countchipdata--;
+	  if (countchipdata>1500) {
+	    if(_debug) out_log << " BUG: (0x" << hex << packetData[packetData.size()-countchipdata+bugID[lastTwo[1]]+504*2] << "," << dec << bugID[lastTwo[1]]+504*2 << ")";
+	    countbugdata++;
+	    packetData.erase(packetData.end()-countchipdata+bugID[lastTwo[1]]+504*2);
+	    countchipdata--;
+	  }
+	  if (countchipdata>1000) {
+	    if(_debug) out_log << " BUG: (0x" << hex << packetData[packetData.size()-countchipdata+bugID[lastTwo[1]]+504] << "," << dec << bugID[lastTwo[1]]+504 << ")";
+	    countbugdata++;
+	    packetData.erase(packetData.end()-countchipdata+bugID[lastTwo[1]]+504);
+	    countchipdata--;
+	  }
+	  if (countchipdata>500) {
+	    if(_debug) out_log << " BUG: (0x" << hex << packetData[packetData.size()-countchipdata+bugID[lastTwo[1]]] << "," << dec << bugID[lastTwo[1]] << ")";
+	    countbugdata++;
+	    packetData.erase(packetData.end()-countchipdata+bugID[lastTwo[1]]);
+	    countchipdata--;
+	  }
+	}
 
-            packetData.push_back(dataResult);countchipdata++;
+	packetData.push_back(dataResult); 
+	if(0) out_log  << "0x" << hex << dataResult << " " << dec << countchipdata << endl;
+	
+	/*if(countchipdata==496 || countchipdata==1000 || countchipdata==1504) {
+	  countbugdata++;
+	  if(_debug) out_log << " BUG: (0x" << hex << dataResult << "," << dec << countchipdata << ")";
+	  continue;
+	}
+	else if (dataResult == 0xFFFE){
+	  packetData.pop_back();
+	  countbugdata++;
+	  packetData.push_back(dataResult); 
+	}
+	else {
+	  packetData.push_back(dataResult); 
+	  if(0) out_log  << "0x" << hex << dataResult << " " << dec << countchipdata << endl;
+	  }*/
+	
+	if(dataResult == 0xFFFE) {//END of CHIP
+	  altTag = true;
+	}
+	      
+	if(dataResult == 0xFFFE){
+	  if (_debug) out_log << "...End CHIP "<< lastTwo[1] << " with " << dec << countchipdata-1 << " words (bug: " << countbugdata << ")" << endl;
+	  if (countchipdata>100) {countchip++;};
+	}
 
-            if(dataResult == 0xFFFE) {//END of CHIP
-                altTag = true;
-            }
-
-            if(lastTwo[1] == 0xFFFC){
-                if (_debug) out_log << "   SPILL "<< lastTwo[0] << " " << dataResult << " START--->" <<endl;
-                countchip=0;
-            }
-            if(lastTwo[1] == 0xFFFD){
-                if (_debug) out_log << "       CHIP "<< lastTwo[0] - 65280 << " Begin..."; countchipdata=0;
-            }
-
-            if(lastTwo[1] == 0xFFFE){
-                if (_debug) out_log << "...End CHIP "<< lastTwo[0] - 65280 << " with " << countchipdata-2-3 << " words" <<endl;
-                if (countchipdata>100) {countchip++;};
-            }
-
-            if(lastTwo[1] == 0xFFFF){
-                if (_debug) out_log << "   ----->END SPILL "<< lastTwo[0] << " " << dataResult << "  with " << countchip << " chips"<< endl<<acqNumber<<endl;
-                packetData.clear();
-                lastTwo[0]=lastTwo[1]=dataResult=0;
-                altTag = false;
-            }
+	if(lastTwo[1] == 0xFFFF){
+	  if (_debug) out_log << "   ----->END SPILL "<< lastTwo[0] << " " << dataResult << "  with " << countchip << " chips"<< endl<<acqNumber<<endl;
+	  packetData.clear();
+	  lastTwo[0]=lastTwo[1]=dataResult=0;
+	  altTag = false;
+	}
 
 
-            if(lastTwo[1] == 0x2020 && lastTwo[0] == 0x2020 && dataResult == 0xFFFF){// SPILL END
-                //out_log<<"SPILL END= "<<packetData.size()<<endl;
-	      if(recordEvent){
-		if (countchip>0){
-		  int data_int = readEvent(packetData,bcidthres);
-		  h_dataIntegrity->Fill(data_int);
-		  if(_debug) out_log<<" Data Int = "<<data_int<<endl;
-		  if(data_int==0) {
-		    event++;
-		    tree->Fill();
+	if(lastTwo[1] == 0x2020 && lastTwo[0] == 0x2020 && dataResult == 0xFFFF){// SPILL END
+	  //out_log<<"SPILL END= "<<packetData.size()<<endl;
+	  if(recordEvent){
+	    if (countchip>0){
+	      int data_int = readEvent(packetData,bcidthres);
+	      h_dataIntegrity->Fill(data_int);
+	      if(_debug) out_log<<" Data Int = "<<data_int<<endl;
+	      if(data_int==0) {
+		event++;
+		tree->Fill();
 
-		    //QUICK ANALISYS HISTORGRAMS
-		    for(int nc=0; nc<NCHIP; nc++) {
-		      int c = info->GetASUChipNumberFromChipID(nc);
-		      if(numCol[c]>0 ) {
-			h_nCol[c]->Fill(numCol[c]);
-			h_col_Acq[c]->Fill(numCol[c]);
+		//QUICK ANALISYS HISTORGRAMS
+		for(int nc=0; nc<NCHIP; nc++) {
+		  int c = info->GetASUChipNumberFromChipID(nc);
+		  if(numCol[c]>0 ) {
+		    h_nCol[c]->Fill(numCol[c]);
+		    h_col_Acq[c]->Fill(numCol[c]);
+		  }
+		  for(int ibc=0; ibc<MEMDEPTH; ibc++) {
+		    for( int ichan=0; ichan<NCHANNELS; ichan++){
+		      if(gain_hit_high[nc][ibc][ichan]==1 && charge_high[nc][ibc][ichan]>NEGDATA_THR ){
+			h_hit_high[c]->Fill(ichan);
+			h2_hits->Fill(info->GetX(c,ichan),info->GetY(c,ichan) );
+			h2_hits_Acq->Fill(info->GetX(c,ichan),info->GetY(c,ichan) );
+			h_hits_BCID[c][ichan]->Fill(bcid[nc][ibc]);
 		      }
-		      for(int ibc=0; ibc<MEMDEPTH; ibc++) {
-			for( int ichan=0; ichan<NCHANNELS; ichan++){
-			  if(gain_hit_high[nc][ibc][ichan]==1 && charge_high[nc][ibc][ichan]>NEGDATA_THR ){
-			    h_hit_high[c]->Fill(ichan);
-			    h2_hits->Fill(info->GetX(c,ichan),info->GetY(c,ichan) );
-			    h2_hits_Acq->Fill(info->GetX(c,ichan),info->GetY(c,ichan) );
-			    h_hits_BCID[c][ichan]->Fill(bcid[nc][ibc]);
-			  }
-			}
-		      }
-		    } // end quick analisys
-		  }// end good data block
-		}
-	      }
+		    }
+		  }
+		} // end quick analisys
+	      }// end good data block
 	    }
+	  }
+	}
 	    
-            if(lastTwo[1] == 0x5053 && lastTwo[0] == 0x4C49 && dataResult == 0x2020){ //New SPILL: extract SPILL number
-	      if(altTag)
-		if (_savelog) out_log<<"<!> WARNING <!> New spill without end flag of the previous spill - some chips found "<<endl;
-	      acqNumber= packetData[packetData.size()-5]*65536+packetData[packetData.size()-4];
+	if(lastTwo[1] == 0x5053 && lastTwo[0] == 0x4C49 && dataResult == 0x2020){ //New SPILL: extract SPILL number
+	  if(altTag)
+	    if (_savelog) out_log<<"<!> WARNING <!> New spill without end flag of the previous spill - some chips found "<<endl;
+	  acqNumber= packetData[packetData.size()-5]*65536+packetData[packetData.size()-4];
 	      
-	      treeInit();
-	      packetData.clear();
-	      lastTwo[0]=lastTwo[1]=dataResult=0;
-	      altTag = false;
+	  treeInit();
+	  packetData.clear();
+	  lastTwo[0]=lastTwo[1]=dataResult=0;
+	  altTag = false;
 	      
-            }
+	}
 
-            lastTwo[1] = lastTwo[0];
-            lastTwo[0] = dataResult;
+	lastTwo[1] = lastTwo[0];
+	lastTwo[0] = dataResult;
 
-        }
+      }
 
     if(_savelog) {
       out_log <<endl;

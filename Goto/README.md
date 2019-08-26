@@ -17,7 +17,7 @@ run_XXXXX_merge_BUILD_EVENT_EvDisplay.root : TH3F shower event display (by event
 ### AngleSampleData/
 run_20044 : Change angle sample data
 
-### Result/
+### ChangeAngleResult/
 run_XXXXX_merge_analysis.pdf : Analysis for cross talk and sensitive thickness (by merge_analysis.C)  
 
 ### pedetal/

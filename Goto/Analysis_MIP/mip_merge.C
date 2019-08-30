@@ -193,7 +193,7 @@ void mip_merge(std::string str){
     if(islab==3) slabname = "K1";
     if(islab==4) slabname = "K2";
 
-    TString pedestal_filename = "/Users/kiichigoto/Desktop/laboratory/ILC/Test_Beam_2019/Analysis/Pedestal_Map/" + slabname + "_Pedestal.root";
+    TString pedestal_filename = "../pedestal/" + slabname + "_Pedestal.root";
     f[islab] = TFile::Open(pedestal_filename); 
     Pedestal_Tree[islab] = (TTree*)f[islab]->Get("Pedestal_Tree");
 

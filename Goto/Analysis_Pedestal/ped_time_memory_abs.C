@@ -60,7 +60,7 @@ void ped_time_memory_abs(){
   }
 
   // Read Temperature
-  TString temp_path = "./run_temperature.txt";
+  TString temp_path = "../run_data/run_temperature.txt";
   std::ifstream reading_temp(temp_path, std::ios::in);
   if(!reading_temp){
     cout << "run_temperature is not found" << endl;
@@ -78,7 +78,7 @@ void ped_time_memory_abs(){
   temp_var[0]->Draw("P");
   
   // Read Time
-  TString time_path = "./run_time.txt";
+  TString time_path = "../run_data/run_time.txt";
   std::ifstream reading_time(time_path, std::ios::in);
   if(!reading_time){
     cout << "run_time is not found" << endl;

@@ -43,33 +43,39 @@ void mip_map(){
 
   // Fill to Tree Data
   Double_t mip_mean[5][16][64] = {0};
+  Double_t mip_error[5][16][64] = {0};
   Double_t mip_chi2ndf[5][16][64] = {0};
 
   // Create New TTree
-  TFile *fout = new TFile("./MIP_Map/MIP_Map.root" , "RECREATE");
+  TFile *fout = new TFile("MIP_Map.root" , "RECREATE");
   TTree *MIP_Tree = new TTree("MIP_Tree", "MIP_Tree");
   MIP_Tree->Branch("mip_mean", mip_mean,
 		        "mip_mean[5][16][64]/D");
+  MIP_Tree->Branch("mip_error", mip_error,
+		        "mip_error[5][16][64]/D");
   MIP_Tree->Branch("mip_chi2ndf", mip_chi2ndf,
 		        "mip_chi2ndf[5][16][64]/D");
 
 
-  TString mip_path = "./MIP_Map/mip_mean_chip.txt";
+  TString mip_path = "./Slab_Result/mip_mean.txt";
   std::ifstream reading_mip(mip_path, std::ios::in);
   if(!reading_mip){
     cout << "mip_mean.txt is not found" << endl;
   }
   Int_t tmp_slab = 0, tmp_chip = 0, tmp_channel = 0;
-  Double_t tmp_mip_mean = 0, tmp_mip_chi = 0, tmp_mip_ndf = 0;
+  Double_t tmp_mip_mean = 0, tmp_mip_error = 0, tmp_mip_chi = 0, tmp_mip_ndf = 0;
   while(reading_mip){
-    reading_mip >> tmp_slab >> tmp_chip >> tmp_channel >> tmp_mip_mean >> tmp_mip_chi >> tmp_mip_ndf;
+    reading_mip >> tmp_slab >> tmp_chip >> tmp_channel >> tmp_mip_mean >> tmp_mip_error >> tmp_mip_chi >> tmp_mip_ndf;
     if(tmp_mip_ndf==0) continue;
     if(mip_mean[tmp_slab][tmp_chip][tmp_channel]==0){
       mip_mean[tmp_slab][tmp_chip][tmp_channel] = tmp_mip_mean;
+      mip_error[tmp_slab][tmp_chip][tmp_channel] = tmp_mip_error;
       mip_chi2ndf[tmp_slab][tmp_chip][tmp_channel] = tmp_mip_chi/tmp_mip_ndf;
+      cout << tmp_mip_mean << " " << tmp_mip_chi/tmp_mip_ndf << endl;
     }
     else if(mip_mean[tmp_slab][tmp_chip][tmp_channel]!=0 && (tmp_mip_chi/tmp_mip_ndf)<mip_chi2ndf[tmp_slab][tmp_chip][tmp_channel]){
       mip_mean[tmp_slab][tmp_chip][tmp_channel] = tmp_mip_mean;
+      mip_error[tmp_slab][tmp_chip][tmp_channel] = tmp_mip_error;
       mip_chi2ndf[tmp_slab][tmp_chip][tmp_channel] = tmp_mip_chi/tmp_mip_ndf;
     }
   }
@@ -79,6 +85,9 @@ void mip_map(){
   MIP_Tree->Write();
 
   // Make Mip Map
+  Int_t number_of_nodata[5] = {0};
+  Int_t number_of_data[5] = {0};
+  Int_t number_of_channels[5] = {0};
   TH2F *mappp[MaxSlab];
   TH2F *chip_map = new TH2F("chip_map", "Chip Map;X[mm];Y[mm]", 32, -90, 90, 32, -90, 90);
   TH2F *asic_map = new TH2F("asic_map", "Asic Map;X[mm];Y[mm]", 4, -90, 90, 4, -90, 90);
@@ -88,12 +97,23 @@ void mip_map(){
     for(Int_t ichip=0; ichip<MaxChip; ichip++){
       if(islab==0) asic_map->Fill(map_pointX[ichip][0], map_pointY[ichip][0], ichip);
       for(Int_t ichn=0; ichn<MaxChannel; ichn++){
-	if(mip_chi2ndf[islab][ichip][ichn]<4){
+	number_of_channels[islab]++;
+	if(mip_mean[islab][ichip][ichn]==0){
+	  cout << "slab " << islab << " chip " << ichip << " channel " << ichn << " mean " << tmp_mip_mean << endl;
+	  number_of_nodata[islab]++;
+	}
+	else if(mip_chi2ndf[islab][ichip][ichn]<3){
           mappp[islab]->Fill(map_pointX[ichip][ichn], map_pointY[ichip][ichn], mip_mean[islab][ichip][ichn]);
+	  number_of_data[islab]++;
 	}
         if(islab==0) chip_map->Fill(map_pointX[ichip][ichn], map_pointY[ichip][ichn], ichn);
       }
     }
+  }
+  for(Int_t islab=0; islab<MaxSlab; islab++){
+    cout << "in slab " << islab << " : " << number_of_channels[islab] << " channels exist" << endl;
+    cout << "in slab " << islab << " : " << number_of_nodata[islab] << " channels are nothing" << endl;
+    cout << "in slab " << islab << " : " << number_of_data[islab] << " channels can be used " << endl;
   }
 
   // Print Hit Map
@@ -132,5 +152,5 @@ void mip_map(){
       }
     }
   }
-  canvas1->Print("./MIP_Map/MIP_Map.pdf", "pdf");
+  canvas1->Print("Mip_Map.pdf", "pdf");
 }

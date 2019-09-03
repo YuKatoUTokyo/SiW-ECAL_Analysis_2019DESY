@@ -53,7 +53,7 @@ void ped_time(){
     if(islab==3) slabname = "K1";
     if(islab==4) slabname = "K2";
 
-    TString pedestal_filename = "/Users/kiichigoto/Desktop/laboratory/ILC/Test_Beam_2019/Analysis/Pedestal_Map/" + slabname + "_Pedestal.root";
+    TString pedestal_filename = "../pedestal/" + slabname + "_Pedestal.root";
     f[islab] = TFile::Open(pedestal_filename); 
     Pedestal_Tree[islab] = (TTree*)f[islab]->Get("Pedestal_Tree");
 
@@ -89,7 +89,7 @@ void ped_time(){
   }
 
   // Read Temperature
-  TString temp_path = "./run_temperature.txt";
+  TString temp_path = "../run_data/run_temperature.txt";
   std::ifstream reading_temp(temp_path, std::ios::in);
   if(!reading_temp){
     cout << "run_temperature is not found" << endl;
@@ -107,7 +107,7 @@ void ped_time(){
   temp_var[0]->Draw("P");
   
   // Read Time
-  TString time_path = "./run_time.txt";
+  TString time_path = "../run_data/run_time.txt";
   std::ifstream reading_time(time_path, std::ios::in);
   if(!reading_time){
     cout << "run_time is not found" << endl;
